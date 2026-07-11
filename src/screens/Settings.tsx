@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { db, getProfile, type Profile } from "../db";
 import { INTEREST_TAGS } from "../content/suggestions";
+import { notificationsSupported, requestNotifPermission } from "../logic/notify";
 
 export default function Settings() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -37,6 +38,23 @@ export default function Settings() {
     await db.profile.put(profile!);
     setSaved(true);
   }
+
+  async function toggleNotifications(on: boolean) {
+    if (on) {
+      const granted = await requestNotifPermission();
+      patch({ notifications: granted });
+      if (!granted) alert("Браузер не разрешил уведомления. Включите их в настройках сайта и попробуйте снова.");
+    } else {
+      patch({ notifications: false });
+    }
+  }
+
+  const BREAK_OPTIONS = [
+    { v: 0, label: "по ходу дня" },
+    { v: 45, label: "каждые 45 мин" },
+    { v: 60, label: "каждый час" },
+    { v: 90, label: "каждые 1.5 часа" },
+  ];
 
   const allTags = Array.from(new Set([...INTEREST_TAGS, ...profile.interests]));
 
@@ -96,7 +114,51 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+      <h2>Активность и перерывы</h2>
+      <div className="card">
+        <label style={{ margin: "0 0 6px" }}>Разминки-перерывы</label>
+        <div className="seg" style={{ marginBottom: 12 }}>
+          {BREAK_OPTIONS.map((o) => (
+            <button
+              key={o.v}
+              className={profile.breakEveryMin === o.v ? "on" : "ghost"}
+              onClick={() => patch({ breakEveryMin: o.v })}
+              style={{ fontSize: 12, padding: "8px 6px" }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <label className="row spread" style={{ margin: 0, alignItems: "center", cursor: "pointer" }}>
+          <span>Разминка в перерывах (отжаться/присесть)</span>
+          <input
+            type="checkbox"
+            checked={profile.wantMovement}
+            onChange={(e) => patch({ wantMovement: e.target.checked })}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
+      </div>
+
+      <h2>Уведомления о перерывах</h2>
+      <div className="card">
+        <label className="row spread" style={{ margin: 0, alignItems: "center", cursor: "pointer" }}>
+          <span>Напоминать «пора передохнуть» с фактом и разминкой</span>
+          <input
+            type="checkbox"
+            checked={profile.notifications}
+            onChange={(e) => toggleNotifications(e.target.checked)}
+            disabled={!notificationsSupported()}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
+        <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          Работают, только пока приложение открыто (вкладка или установленное приложение запущены).
+          Уведомления при полностью закрытом приложении в бесплатной версии недоступны.
+        </p>
+      </div>
+
+      <div className="row" style={{ gap: 8, marginTop: 16 }}>
         <button className="primary grow" onClick={save}>Сохранить</button>
         {saved && <span className="muted">✓ сохранено</span>}
       </div>

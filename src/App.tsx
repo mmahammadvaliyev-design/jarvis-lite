@@ -1,14 +1,14 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import Today from "./screens/Today";
 import Add from "./screens/Add";
-import Evening from "./screens/Evening";
+import Money from "./screens/Money";
 import Stats from "./screens/Stats";
 import Settings from "./screens/Settings";
 
 const TABS = [
-  { to: "/", ico: "📅", label: "Сегодня", end: true },
+  { to: "/", ico: "📅", label: "Календарь", end: true },
   { to: "/add", ico: "➕", label: "Добавить", end: false },
-  { to: "/evening", ico: "🌙", label: "Вечер", end: false },
+  { to: "/money", ico: "₽", label: "Деньги", end: false },
   { to: "/stats", ico: "📊", label: "Статистика", end: false },
   { to: "/settings", ico: "⚙️", label: "Настройки", end: false },
 ];
@@ -20,7 +20,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/add" element={<Add />} />
-          <Route path="/evening" element={<Evening />} />
+          <Route path="/money" element={<Money />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

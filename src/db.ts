@@ -62,6 +62,9 @@ export interface Profile {
   sleepTime: string; // "HH:MM"
   workStart: string;
   workEnd: string;
+  breakEveryMin: number; // микро-перерыв не реже, чем раз в N минут работы (0 = только по ходу)
+  wantMovement: boolean; // включать разминку (отжаться/присесть) в перерывы
+  notifications: boolean; // разрешены ли браузерные уведомления о перерывах
 }
 
 // Построенный план дня, привязанный к дате.
@@ -69,13 +72,41 @@ export interface PlanRecord extends DayPlan {
   date: string; // "YYYY-MM-DD" — первичный ключ
 }
 
+// ── Финансы ───────────────────────────────────────────────────────
+export type TxnType = "income" | "expense";
+
+export interface Txn {
+  id: string;
+  type: TxnType;
+  amount: number; // в валюте профиля, положительное число
+  category: string;
+  note: string;
+  date: string; // "YYYY-MM-DD"
+  createdAt: string;
+}
+
+export const EXPENSE_CATEGORIES = [
+  "еда",
+  "транспорт",
+  "жильё",
+  "здоровье",
+  "развлечения",
+  "покупки",
+  "связь",
+  "прочее",
+];
+export const INCOME_CATEGORIES = ["зарплата", "подработка", "подарок", "прочее"];
+
 export const DEFAULT_PROFILE: Profile = {
   id: "me",
-  interests: ["интересные факты", "новые слова", "история слов"],
+  interests: ["интересные факты", "новые слова", "английский"],
   wakeTime: "07:30",
   sleepTime: "23:30",
   workStart: "10:00",
   workEnd: "19:00",
+  breakEveryMin: 60,
+  wantMovement: true,
+  notifications: false,
 };
 
 class JarvisDB extends Dexie {
@@ -83,6 +114,7 @@ class JarvisDB extends Dexie {
   seen!: Table<SeenSuggestion, string>;
   profile!: Table<Profile, string>;
   plans!: Table<PlanRecord, string>;
+  txns!: Table<Txn, string>;
 
   constructor() {
     super("jarvis-lite");
@@ -91,6 +123,10 @@ class JarvisDB extends Dexie {
       seen: "id, date",
       profile: "id",
       plans: "date",
+    });
+    // v2: добавили финансы. Существующие таблицы переносятся автоматически.
+    this.version(2).stores({
+      txns: "id, date, type, category",
     });
   }
 }
@@ -110,9 +146,13 @@ export function nowHHMM(d = new Date()): string {
 
 export async function getProfile(): Promise<Profile> {
   const p = await db.profile.get("me");
-  if (p) return p;
+  if (p) return { ...DEFAULT_PROFILE, ...p }; // добавляем поля, которых не было в старых версиях
   await db.profile.put(DEFAULT_PROFILE);
   return DEFAULT_PROFILE;
+}
+
+export function money(n: number): string {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽";
 }
 
 export function uid(): string {

@@ -150,3 +150,45 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .empty { text-align: center; color: var(--muted); padding: 40px 16px; }
 .spoiler { margin-top: 8px; }
 .answer { margin-top: 8px; padding: 10px; background: var(--surface-2); border-radius: 8px; }
+
+/* календарь */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-dow { text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 2px; }
+.cal-day {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.cal-num { font-size: 14px; }
+.cal-today { border-color: var(--accent); }
+.cal-sel { background: var(--accent-dim); color: #04263a; }
+.cal-badge {
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.22);
+  color: var(--accent);
+}
+.cal-sel .cal-badge { background: rgba(4, 38, 58, 0.25); color: #04263a; }
+.cal-badge.alldone { background: rgba(52, 211, 153, 0.22); color: var(--green); }
+.cal-badge.over { background: rgba(248, 113, 113, 0.22); color: var(--red); }
+
+/* финансы */
+.balance { font-size: 30px; font-weight: 800; }
+.balance.pos { color: var(--green); }
+.balance.neg { color: var(--red); }
+.txn-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+.txn-amt.income { color: var(--green); }
+.txn-amt.expense { color: var(--red); }
+.seg { display: flex; gap: 6px; }
+.seg button { flex: 1; }
+.seg button.on { background: var(--accent-dim); color: #04263a; font-weight: 600; }

@@ -105,6 +105,16 @@ export const SUGGESTIONS: Suggestion[] = [
     answer: "Журнал. «Магазин» по-английски — shop или store. Такие слова называют «ложными друзьями переводчика»." },
   { id: "en5", interest: "английский", kind: "word", title: "Wanderlust",
     content: "Сильная тяга к путешествиям, «охота к перемене мест». Заимствовано из немецкого: wandern (странствовать) + Lust (желание). «Her wanderlust took her to 30 countries»." },
+  { id: "en6", interest: "английский", kind: "word", title: "Resilience",
+    content: "Устойчивость, способность быстро восстанавливаться после трудностей. «Her resilience helped her bounce back». Прилагательное — resilient." },
+  { id: "en7", interest: "английский", kind: "word", title: "Mindful",
+    content: "Осознанный, внимательный к моменту. «Be mindful of your posture» — «следи за осанкой». Существительное — mindfulness (осознанность)." },
+  { id: "en8", interest: "английский", kind: "word", title: "Cozy",
+    content: "Уютный, тёплый и комфортный. «A cozy little café». Британцы чаще пишут cosy. Близко по духу к датскому hygge." },
+  { id: "en9", interest: "английский", kind: "word", title: "Grit",
+    content: "Твёрдость характера, упорство ради долгой цели. «Success takes talent and grit». Дословно grit — «песок, крупа», отсюда «стиснуть зубы»." },
+  { id: "en10", interest: "английский", kind: "word", title: "Eager",
+    content: "Жаждущий, с энтузиазмом. «I'm eager to start» — «не терпится начать». Idiom: eager beaver — работяга, который рвётся делать больше всех." },
 
   // ── универсальные (без привязки к интересам) ──────────────────────
   { id: "r1", interest: "*", kind: "rest", title: "Просто выдохни",
@@ -120,6 +130,54 @@ export const SUGGESTIONS: Suggestion[] = [
   { id: "r5", interest: "*", kind: "fact", title: "Правило двух минут",
     content: "Если дело занимает меньше двух минут — сделай его прямо сейчас, не записывай в план. Мелкие задачи в списке отнимают больше сил на «помнить о них», чем на выполнение." },
 ];
+
+// ── Разминки для перерывов ────────────────────────────────────────
+export const MOVEMENTS: string[] = [
+  "10 отжиманий",
+  "15 приседаний",
+  "планка 30 секунд",
+  "20 прыжков «звёздочка»",
+  "выпады — по 10 на каждую ногу",
+  "наклоны к носкам ×15",
+  "покрути плечами и шеей, разомни кисти",
+  "встань и потянись к потолку, 5 глубоких вдохов",
+  "пройдись 2 минуты, налей воды",
+  "25 приседаний, если чувствуешь силы",
+];
+
+export function pickMovement(): string {
+  return MOVEMENTS[Math.floor(Math.random() * MOVEMENTS.length)];
+}
+
+export interface BreakBundle {
+  fact: Suggestion | null;
+  word: Suggestion | null;
+  movement: string;
+}
+
+// Недавно показанное — чтобы соседние карточки перерывов, монтирующиеся одновременно,
+// не выдавали один и тот же факт/слово (записи в БД ещё не успевают примениться).
+const recentlyServed = new Set<string>();
+
+// Пачка для перерыва: один интересный факт + одно английское слово + разминка.
+export function buildBreakBundle(seenIds: string[], wantMovement: boolean): BreakBundle {
+  const seen = new Set([...seenIds, ...recentlyServed]);
+  const pickBy = (pred: (s: Suggestion) => boolean): Suggestion | null => {
+    const fresh = SUGGESTIONS.filter((s) => pred(s) && !seen.has(s.id));
+    const pool = fresh.length ? fresh : SUGGESTIONS.filter(pred);
+    if (!pool.length) return null;
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    recentlyServed.add(chosen.id);
+    // Через несколько секунд забываем — иначе со временем исключим весь пул.
+    setTimeout(() => recentlyServed.delete(chosen.id), 4000);
+    return chosen;
+  };
+  return {
+    fact: pickBy((s) => s.kind === "fact"),
+    word: pickBy((s) => s.interest === "английский" && s.kind === "word"),
+    movement: wantMovement ? pickMovement() : "",
+  };
+}
 
 /**
  * Выбирает одну карточку под интересы пользователя и длину окна,

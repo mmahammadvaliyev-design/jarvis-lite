@@ -55,6 +55,8 @@ export default function Add() {
         workStart: profile.workStart,
         workEnd: profile.workEnd,
         now: nowHHMM(),
+        wantMovement: profile.wantMovement,
+        breakEveryMin: profile.breakEveryMin,
       });
       await db.plans.put({ date: today, ...plan });
       nav("/");

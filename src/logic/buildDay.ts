@@ -1,4 +1,5 @@
 import type { Priority, Task } from "../db";
+import { pickMovement } from "../content/suggestions";
 
 export interface PlanBlock {
   start: string; // "HH:MM"
@@ -20,6 +21,8 @@ export interface BuildContext {
   workStart: string;
   workEnd: string;
   now: string; // "HH:MM" — текущее время
+  wantMovement: boolean; // подписывать перерывы разминкой
+  breakEveryMin: number; // делать перерыв не реже, чем раз в N минут работы (0 = только по ходу)
 }
 
 const toMin = (hhmm: string): number => {
@@ -65,6 +68,7 @@ export function buildDay(tasks: Task[], ctx: BuildContext): DayPlan {
   const overflowTaskIds: string[] = [];
   let cursor = dayStart;
   let sinceBreak = 0; // сколько задач подряд без перерыва
+  let minutesSinceBreak = 0; // сколько минут работы без перерыва
   let lunchDone = false;
 
   const ordered = orderTasks(pending);
@@ -81,9 +85,10 @@ export function buildDay(tasks: Task[], ctx: BuildContext): DayPlan {
   const pushFree = (from: number, to: number) => {
     let c = from;
     let n = 0;
-    while (to - c >= 20 && n < 3) {
-      const end = Math.min(c + 45, to);
-      blocks.push({ start: toHHMM(c), end: toHHMM(end), kind: "free", label: "Свободно" });
+    // Меньше окон и они компактнее — перерыв приходит «пачкой», а не тремя карточками.
+    while (to - c >= 25 && n < 2) {
+      const end = Math.min(c + 40, to);
+      blocks.push({ start: toHHMM(c), end: toHHMM(end), kind: "free", label: "Перерыв" });
       c = end;
       n += 1;
     }
@@ -99,6 +104,7 @@ export function buildDay(tasks: Task[], ctx: BuildContext): DayPlan {
       blocks.push({ start: toHHMM(cursor), end: toHHMM(cursor + 40), kind: "break", label: "Обед" });
       cursor += 40;
       sinceBreak = 0;
+      minutesSinceBreak = 0;
       lunchDone = true;
     }
   };
@@ -119,11 +125,15 @@ export function buildDay(tasks: Task[], ctx: BuildContext): DayPlan {
     });
     cursor += dur;
     sinceBreak += 1;
-    // Перерыв после длинного блока или двух задач подряд.
-    if ((dur >= 90 || sinceBreak >= 2) && cursor + 15 <= dayEnd) {
-      blocks.push({ start: toHHMM(cursor), end: toHHMM(cursor + 15), kind: "break", label: "Перерыв" });
+    minutesSinceBreak += dur;
+    // Перерыв после длинного блока, двух задач подряд или часа работы — с разминкой, чтобы день был активнее.
+    const overWorkLimit = ctx.breakEveryMin > 0 && minutesSinceBreak >= ctx.breakEveryMin;
+    if ((dur >= 90 || sinceBreak >= 2 || overWorkLimit) && cursor + 15 <= dayEnd) {
+      const label = ctx.wantMovement ? `Разминка: ${pickMovement()}` : "Перерыв";
+      blocks.push({ start: toHHMM(cursor), end: toHHMM(cursor + 15), kind: "break", label });
       cursor += 15;
       sinceBreak = 0;
+      minutesSinceBreak = 0;
     }
     return true;
   };
