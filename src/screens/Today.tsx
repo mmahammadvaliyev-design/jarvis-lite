@@ -9,6 +9,9 @@ import { Calendar, type DayCount } from "../components/Calendar";
 import { DayReview } from "../components/DayReview";
 import { DayIdeas } from "../components/DayIdeas";
 import { WaterTracker } from "../components/WaterTracker";
+import { HabitsCard } from "../components/HabitsCard";
+import { MoodCard } from "../components/MoodCard";
+import { QuitSmokingCard } from "../components/QuitSmokingCard";
 import { scheduleBreakNotifications, clearBreakNotifications } from "../logic/notify";
 
 function diffMin(start: string, end: string): number {
@@ -119,7 +122,13 @@ export default function Today() {
 
       <h2 style={{ textTransform: "capitalize" }}>{selLabel}</h2>
 
-      {selected === today && <WaterTracker />}
+      {selected === today && (
+        <>
+          <WaterTracker />
+          {profile.quitSmoking && <QuitSmokingCard profile={profile} />}
+          <HabitsCard />
+        </>
+      )}
 
       {nothing && (
         <div className="empty">
@@ -179,6 +188,8 @@ export default function Today() {
       )}
 
       {selected === today && <DayIdeas tasks={tasks ?? []} profile={profile} />}
+
+      {selected === today && <MoodCard />}
 
       {(tasks?.length ?? 0) > 0 && selected <= today && <DayReview date={selected} />}
     </div>

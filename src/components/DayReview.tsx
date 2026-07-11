@@ -29,10 +29,31 @@ export function DayReview({ date }: { date: string }) {
   const tasks = useLiveQuery(() => db.tasks.where("date").equals(date).toArray(), [date]);
   const week = useLiveQuery(() => weekPoints(date), [date]);
 
+  // Траты за последние 7 дней — чтобы похвалить за экономный день.
+  const recentTxns = useLiveQuery(
+    () => db.txns.where("date").between(shiftDate(date, -6), date, true, true).toArray(),
+    [date],
+  );
+
   if (!tasks || tasks.length === 0) return null;
 
   const summary = week ? daySummary(tasks, week) : "…";
   const undone = tasks.filter((t) => t.status !== "done");
+  const allDone = undone.length === 0 && tasks.length > 0;
+
+  const todayExpense = (recentTxns ?? []).filter((t) => t.type === "expense" && t.date === date).reduce((s, t) => s + t.amount, 0);
+  const prevExpenses: number[] = [];
+  for (let i = 1; i <= 6; i++) {
+    const d = shiftDate(date, -i);
+    const sum = (recentTxns ?? []).filter((t) => t.type === "expense" && t.date === d).reduce((s, t) => s + t.amount, 0);
+    if (sum > 0) prevExpenses.push(sum);
+  }
+  const avgPrev = prevExpenses.length ? prevExpenses.reduce((a, b) => a + b, 0) / prevExpenses.length : 0;
+
+  const praises: string[] = [];
+  if (allDone) praises.push("🎉 Все задачи закрыты — идеальный день, красава!");
+  if (todayExpense === 0) praises.push("💚 Сегодня ни копейки лишней — бюджет тебя обожает.");
+  else if (avgPrev > 0 && todayExpense < avgPrev * 0.8) praises.push("💚 Потратил заметно меньше обычного — экономный день!");
 
   async function carryToTomorrow(t: Task) {
     await db.tasks.update(t.id, {
@@ -56,6 +77,9 @@ export function DayReview({ date }: { date: string }) {
       {open && (
         <div style={{ marginTop: 10 }}>
           <div style={{ lineHeight: 1.6 }}>{summary}</div>
+          {praises.length > 0 && (
+            <div style={{ marginTop: 8, lineHeight: 1.6, fontWeight: 600 }}>{praises.join(" ")}</div>
+          )}
           {undone.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <div className="muted" style={{ marginBottom: 6 }}>Невыполненное:</div>

@@ -68,16 +68,37 @@ export interface Profile {
   moneyReminders: boolean; // напоминать записывать доходы/расходы днём и вечером
   waterReminders: boolean; // напоминать пить воду несколько раз в день
   currency: string; // код валюты для раздела «Бюджет» (AZN, RUB, …)
+  demoMode: boolean; // включён ли демо-режим (реальные данные при этом сохранены)
+  quitSmoking: boolean; // режим «бросаю курить»
+  quitDate: string | null; // дата старта отказа от курения ("YYYY-MM-DD")
 }
 
-// Дневные «победы» — мини-тренировки и стаканы воды (для позитивной статистики).
+// Дневные «победы» — тренировки, вода, настроение, устоявшие тяги (для статистики).
 export interface Win {
   date: string; // "YYYY-MM-DD" — первичный ключ
   water: number;
   exercises: number;
+  mood?: number; // 1..5 — уровень счастья за день
+  urges?: number; // сколько раз устоял перед сигаретой
 }
 
 export const WATER_GOAL = 8;
+
+// ── Привычки (стрики в духе Duolingo) ─────────────────────────────
+export interface Habit {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+export interface HabitDone {
+  id: string; // `${habitId}@${date}`
+  habitId: string;
+  date: string; // "YYYY-MM-DD"
+}
+
+// Рубежи для стрика: после каждого — новая цель.
+export const STREAK_MILESTONES = [7, 14, 30, 50, 100, 150, 200, 365];
 
 // Построенный план дня, привязанный к дате.
 export interface PlanRecord extends DayPlan {
@@ -136,6 +157,9 @@ export const DEFAULT_PROFILE: Profile = {
   moneyReminders: true,
   waterReminders: true,
   currency: "AZN",
+  demoMode: false,
+  quitSmoking: false,
+  quitDate: null,
 };
 
 class JarvisDB extends Dexie {
@@ -145,6 +169,8 @@ class JarvisDB extends Dexie {
   plans!: Table<PlanRecord, string>;
   txns!: Table<Txn, string>;
   wins!: Table<Win, string>;
+  habits!: Table<Habit, string>;
+  habitDone!: Table<HabitDone, string>;
 
   constructor() {
     super("jarvis-lite");
@@ -162,8 +188,16 @@ class JarvisDB extends Dexie {
     this.version(3).stores({
       wins: "date",
     });
+    // v4: привычки со стриками.
+    this.version(4).stores({
+      habits: "id, createdAt",
+      habitDone: "id, habitId, date",
+    });
   }
 }
+
+// Таблицы, которые относятся к «данным дня» (для демо-режима — снапшот/восстановление).
+export const DATA_TABLES = ["tasks", "seen", "plans", "txns", "wins", "habits", "habitDone"] as const;
 
 export const db = new JarvisDB();
 
@@ -189,12 +223,49 @@ export function money(n: number, symbol = "₼"): string {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " " + symbol;
 }
 
-// Инкремент дневной «победы» (вода или мини-тренировка).
-export async function bumpWin(field: "water" | "exercises", delta = 1): Promise<void> {
+// Инкремент дневной «победы» (вода, тренировка или устоявшая тяга).
+export async function bumpWin(field: "water" | "exercises" | "urges", delta = 1): Promise<void> {
   const date = todayStr();
-  const w = (await db.wins.get(date)) ?? { date, water: 0, exercises: 0 };
-  w[field] = Math.max(0, w[field] + delta);
+  const w: Win = (await db.wins.get(date)) ?? { date, water: 0, exercises: 0 };
+  w[field] = Math.max(0, (w[field] ?? 0) + delta);
   await db.wins.put(w);
+}
+
+// Оценка счастья за день (1..5).
+export async function setMood(date: string, mood: number): Promise<void> {
+  const w: Win = (await db.wins.get(date)) ?? { date, water: 0, exercises: 0 };
+  w.mood = mood;
+  await db.wins.put(w);
+}
+
+// ── Привычки и стрики ─────────────────────────────────────────────
+export async function toggleHabitToday(habitId: string, date = todayStr()): Promise<void> {
+  const id = `${habitId}@${date}`;
+  const existing = await db.habitDone.get(id);
+  if (existing) await db.habitDone.delete(id);
+  else await db.habitDone.put({ id, habitId, date });
+}
+
+// Стрик: сколько дней подряд привычка выполнена, считая до сегодня.
+// День ещё «жив», если выполнен вчера, но сегодня пока нет.
+export function streakFromDates(doneDates: Set<string>, today = todayStr()): number {
+  const shift = (d: string, n: number) => {
+    const x = new Date(d + "T00:00:00");
+    x.setDate(x.getDate() + n);
+    return todayStr(x);
+  };
+  let cursor = doneDates.has(today) ? today : shift(today, -1);
+  if (!doneDates.has(cursor)) return 0;
+  let streak = 0;
+  while (doneDates.has(cursor)) {
+    streak += 1;
+    cursor = shift(cursor, -1);
+  }
+  return streak;
+}
+
+export function nextMilestone(streak: number): number {
+  return STREAK_MILESTONES.find((m) => m > streak) ?? streak + 100;
 }
 
 export function uid(): string {

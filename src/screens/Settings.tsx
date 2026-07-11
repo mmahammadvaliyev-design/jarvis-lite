@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { CURRENCIES, db, getProfile, type Profile } from "../db";
+import { CURRENCIES, db, getProfile, todayStr, type Profile } from "../db";
 import { INTEREST_TAGS } from "../content/suggestions";
 import { notificationsSupported, requestNotifPermission } from "../logic/notify";
+import { disableDemo, enableDemo } from "../seed";
 
 export default function Settings() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [custom, setCustom] = useState("");
   const [saved, setSaved] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
 
   useEffect(() => {
     getProfile().then(setProfile);
@@ -37,6 +39,21 @@ export default function Settings() {
   async function save() {
     await db.profile.put(profile!);
     setSaved(true);
+  }
+
+  async function toggleDemo(on: boolean) {
+    setDemoBusy(true);
+    try {
+      if (on) await enableDemo();
+      else await disableDemo();
+      setProfile(await getProfile());
+    } finally {
+      setDemoBusy(false);
+    }
+  }
+
+  function toggleQuit(on: boolean) {
+    patch({ quitSmoking: on, quitDate: on ? (profile!.quitDate ?? todayStr()) : profile!.quitDate });
   }
 
   async function toggleNotifications(on: boolean) {
@@ -177,7 +194,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <h2>Валюта (раздел «Деньги»)</h2>
+      <h2>Валюта (раздел «Бюджет»)</h2>
       <div className="card">
         <div className="row wrap" style={{ gap: 8 }}>
           {CURRENCIES.map((c) => (
@@ -190,6 +207,39 @@ export default function Settings() {
             </button>
           ))}
         </div>
+      </div>
+
+      <h2>Здоровье</h2>
+      <div className="card">
+        <label className="row spread" style={{ margin: 0, alignItems: "center", cursor: "pointer" }}>
+          <span>Я бросаю курить 🚭 (помощь вместо сигареты)</span>
+          <input
+            type="checkbox"
+            checked={profile.quitSmoking}
+            onChange={(e) => toggleQuit(e.target.checked)}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
+        <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          На главном появится счётчик дней без сигарет и кнопка «тянет закурить» — она предложит, чем заняться вместо.
+        </p>
+      </div>
+
+      <h2>Демо-режим</h2>
+      <div className="card">
+        <label className="row spread" style={{ margin: 0, alignItems: "center", cursor: "pointer" }}>
+          <span>Показать демо-данные (для просмотра)</span>
+          <input
+            type="checkbox"
+            checked={profile.demoMode}
+            disabled={demoBusy}
+            onChange={(e) => toggleDemo(e.target.checked)}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
+        <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          Заполнит приложение примерами (задачи, бюджет, привычка со стриком). <b style={{ color: "var(--text)" }}>Твои настоящие данные сохранятся</b> и вернутся, когда выключишь демо.
+        </p>
       </div>
 
       <div className="row" style={{ gap: 8, marginTop: 16 }}>

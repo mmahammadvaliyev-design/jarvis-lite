@@ -11,7 +11,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { currencySymbol, db, DEFAULT_PROFILE, money, todayStr, type Category } from "../db";
+import {
+  currencySymbol,
+  db,
+  DEFAULT_PROFILE,
+  money,
+  streakFromDates,
+  todayStr,
+  type Category,
+} from "../db";
 import { currentStreak } from "../logic/daySummary";
 
 function shift(dateStr: string, days: number): string {
@@ -28,6 +36,7 @@ const MONTHS = [
   "январь", "февраль", "март", "апрель", "май", "июнь",
   "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
 ];
+const MOOD_FACES = ["", "😞", "😐", "🙂", "😀", "🤩"];
 
 const CAT_COLORS: Record<Category, string> = {
   работа: "#2563eb",
@@ -55,11 +64,14 @@ export default function Stats() {
   const monthTxns = useLiveQuery(() => db.txns.where("date").between(mStart, mEnd, true, true).toArray(), [mStart, mEnd]);
   const weekWins = useLiveQuery(() => db.wins.where("date").between(start, today, true, true).toArray(), [today]);
   const profile = useLiveQuery(() => db.profile.get("me"), []);
+  const habits = useLiveQuery(() => db.habits.toArray(), []);
+  const habitDones = useLiveQuery(() => db.habitDone.toArray(), []);
 
   if (!tasks) return <div className="screen">…</div>;
 
-  // ── Задачи за неделю ──
-  const byDay: { date: string; day: string; done: number; planned: number; focus: number }[] = [];
+  // ── Задачи ──
+  const winByDate = new Map((weekWins ?? []).map((w) => [w.date, w]));
+  const byDay: { date: string; day: string; done: number; planned: number; focus: number; mood: number | null }[] = [];
   for (let i = 6; i >= 0; i--) {
     const date = shift(today, -i);
     const dayTasks = tasks.filter((t) => t.date === date);
@@ -69,6 +81,7 @@ export default function Stats() {
       done: dayTasks.filter((t) => t.status === "done").length,
       planned: dayTasks.length,
       focus: dayTasks.filter((t) => t.status === "done").reduce((s, t) => s + t.estimateMin, 0),
+      mood: winByDate.get(date)?.mood ?? null,
     });
   }
   const totalPlanned = tasks.length;
@@ -77,27 +90,38 @@ export default function Stats() {
   const streak = currentStreak(byDay);
 
   const catMap = new Map<Category, number>();
-  for (const t of tasks) {
-    if (t.status === "done") catMap.set(t.category, (catMap.get(t.category) ?? 0) + 1);
-  }
+  for (const t of tasks) if (t.status === "done") catMap.set(t.category, (catMap.get(t.category) ?? 0) + 1);
   const catData = [...catMap.entries()].map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count);
 
-  // ── Бюджет за месяц ──
+  // ── Бюджет ──
   const sym = currencySymbol(profile?.currency ?? DEFAULT_PROFILE.currency);
   const income = (monthTxns ?? []).filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const expense = (monthTxns ?? []).filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const saved = income - expense;
   const hasBudget = (monthTxns ?? []).length > 0;
 
-  // ── Активность за неделю ──
+  // ── Активность ──
   const exercises = (weekWins ?? []).reduce((s, w) => s + w.exercises, 0);
   const water = (weekWins ?? []).reduce((s, w) => s + w.water, 0);
 
-  const empty = totalPlanned === 0 && !hasBudget && exercises === 0 && water === 0;
+  // ── Настроение ──
+  const moodDays = (weekWins ?? []).filter((w) => w.mood);
+  const avgMood = moodDays.length ? Math.round(moodDays.reduce((s, w) => s + (w.mood ?? 0), 0) / moodDays.length) : 0;
 
-  // Мотивирующая сводка
+  // ── Привычки: лучший стрик ──
+  const doneByHabit = new Map<string, Set<string>>();
+  for (const d of habitDones ?? []) {
+    if (!doneByHabit.has(d.habitId)) doneByHabit.set(d.habitId, new Set());
+    doneByHabit.get(d.habitId)!.add(d.date);
+  }
+  const streaks = (habits ?? []).map((h) => ({ title: h.title, s: streakFromDates(doneByHabit.get(h.id) ?? new Set(), today) })).sort((a, b) => b.s - a.s);
+  const bestStreak = streaks[0]?.s ?? 0;
+
+  const empty = totalPlanned === 0 && !hasBudget && exercises === 0 && water === 0 && bestStreak === 0 && moodDays.length === 0;
+
   const heroBits: string[] = [];
   if (totalDone > 0) heroBits.push(`закрыто задач: ${totalDone}`);
+  if (bestStreak > 0) heroBits.push(`серия «${streaks[0].title}»: ${bestStreak} дн.`);
   if (exercises > 0) heroBits.push(`мини-тренировок: ${exercises}`);
   if (water > 0) heroBits.push(`стаканов воды: ${water}`);
 
@@ -107,8 +131,8 @@ export default function Stats() {
 
       {empty ? (
         <div className="empty">
-          <p>Пока нет данных за неделю. Добавь задачи и записи в бюджет — и здесь появится твой прогресс.</p>
-          <SeedButtons />
+          <p>Пока нет данных. Добавь задачи и записи в бюджет — здесь появится твой прогресс.</p>
+          <p className="muted">Хочешь просто посмотреть, как всё выглядит? Включи демо-режим в «Настройках» — твои данные при этом сохранятся.</p>
         </div>
       ) : (
         <>
@@ -119,6 +143,20 @@ export default function Stats() {
                 {heroBits.join(", ").replace(/^./, (c) => c.toUpperCase())}. Так держать — капец продуктивно!
               </div>
             </div>
+          )}
+
+          {streaks.some((s) => s.s > 0) && (
+            <>
+              <h2>Серии привычек</h2>
+              <div className="card">
+                {streaks.filter((s) => s.s > 0).map((s) => (
+                  <div key={s.title} className="row spread" style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+                    <span>🔥 {s.title}</span>
+                    <span style={{ fontWeight: 700 }}>{s.s} дн. подряд</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           {hasBudget && (
@@ -135,21 +173,28 @@ export default function Stats() {
                     <div style={{ fontWeight: 800, fontSize: 19, color: "var(--red)" }}>{money(expense, sym)}</div>
                   </div>
                 </div>
-                <div
-                  className="center"
-                  style={{
-                    marginTop: 14,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: saved >= 0 ? "var(--green-soft)" : "var(--red-soft)",
-                  }}
-                >
+                <div className="center" style={{ marginTop: 14, padding: 14, borderRadius: 12, background: saved >= 0 ? "var(--green-soft)" : "var(--red-soft)" }}>
                   <div className="muted">{saved >= 0 ? "Сэкономил в этом месяце" : "Перерасход в этом месяце"}</div>
                   <div className={`balance ${saved >= 0 ? "pos" : "neg"}`}>{money(Math.abs(saved), sym)}</div>
-                  {saved > 0 && (
-                    <div style={{ fontWeight: 600, color: "var(--green)" }}>Ты в плюсе — красава! 🎉</div>
-                  )}
+                  {saved > 0 && <div style={{ fontWeight: 600, color: "var(--green)" }}>Ты в плюсе — красава! 🎉</div>}
                 </div>
+              </div>
+            </>
+          )}
+
+          {moodDays.length > 0 && (
+            <>
+              <h2>Настроение за неделю · в среднем {MOOD_FACES[avgMood]}</h2>
+              <div className="card">
+                <ResponsiveContainer width="100%" height={150}>
+                  <LineChart data={byDay} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+                    <XAxis dataKey="day" stroke={AXIS} fontSize={12} />
+                    <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} stroke={AXIS} fontSize={12} tickFormatter={(v: number) => MOOD_FACES[v] ?? ""} />
+                    <Tooltip contentStyle={TOOLTIP} formatter={(v: number) => [MOOD_FACES[v] ?? v, "настроение"]} />
+                    <Line type="monotone" dataKey="mood" stroke="#7c3aed" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </>
           )}
@@ -210,28 +255,12 @@ export default function Stats() {
                   </div>
                 </>
               )}
-
-              <h2>Время в фокусе (минуты выполненного)</h2>
-              <div className="card">
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={byDay} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-                    <XAxis dataKey="day" stroke={AXIS} fontSize={12} />
-                    <YAxis stroke={AXIS} fontSize={12} />
-                    <Tooltip contentStyle={TOOLTIP} formatter={(v: number) => [`${v} мин`, "фокус"]} />
-                    <Line type="monotone" dataKey="focus" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
             </>
           )}
 
           <p className="muted center" style={{ marginTop: 16 }}>
             Только реальные счётчики — честный прогресс без выдуманных процентов.
           </p>
-          <div style={{ marginTop: 12 }}>
-            <SeedButtons />
-          </div>
         </>
       )}
     </div>
@@ -244,34 +273,5 @@ function StatTile({ value, label }: { value: string; label: string }) {
       <div style={{ fontSize: 24, fontWeight: 700, color: "var(--accent)" }}>{value}</div>
       <div className="muted">{label}</div>
     </div>
-  );
-}
-
-function SeedButtons() {
-  return (
-    <details style={{ marginTop: 8 }}>
-      <summary className="muted" style={{ cursor: "pointer" }}>Для теста</summary>
-      <div className="row" style={{ gap: 8, marginTop: 8 }}>
-        <button
-          className="small"
-          onClick={async () => {
-            const { seedWeek } = await import("../seed");
-            await seedWeek();
-          }}
-        >
-          Заполнить тестовыми данными за неделю
-        </button>
-        <button
-          className="ghost small"
-          onClick={async () => {
-            if (!confirm("Удалить ВСЕ задачи, планы и историю? Это необратимо.")) return;
-            const { clearAll } = await import("../seed");
-            await clearAll();
-          }}
-        >
-          Очистить всё
-        </button>
-      </div>
-    </details>
   );
 }
