@@ -1,0 +1,19 @@
+{
+  "name": "JARVIS — планер дня",
+  "short_name": "JARVIS",
+  "description": "Личный планер дня. Работает офлайн, данные хранятся только на вашем устройстве.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
