@@ -6,6 +6,8 @@ import Money from "./screens/Money";
 import Stats from "./screens/Stats";
 import Settings from "./screens/Settings";
 import { getProfile } from "./db";
+import { PUSH_CONFIGURED } from "./config";
+import { subscribeToPush } from "./logic/push";
 import {
   clearMoneyReminders,
   clearWaterReminders,
@@ -22,11 +24,18 @@ const TABS = [
 ];
 
 export default function App() {
-  // Напоминания о бюджете (днём и вечером), пока приложение открыто.
   useEffect(() => {
     getProfile().then((p) => {
-      if (p.notifications && p.moneyReminders) scheduleMoneyReminders();
-      if (p.notifications && p.waterReminders) scheduleWaterReminders();
+      if (!p.notifications) return;
+      if (PUSH_CONFIGURED) {
+        // Бэкенд настроен — вода и бюджет идут настоящим push, локальные таймеры не нужны
+        // (иначе уведомление придёт дважды, пока приложение открыто). Заодно освежаем подписку.
+        subscribeToPush({ water: p.waterReminders, money: p.moneyReminders });
+      } else {
+        // Бэкенд ещё не подключён — локальный фолбэк, работает только пока открыто.
+        if (p.moneyReminders) scheduleMoneyReminders();
+        if (p.waterReminders) scheduleWaterReminders();
+      }
     });
     return () => {
       clearMoneyReminders();

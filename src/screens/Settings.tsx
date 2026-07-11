@@ -3,6 +3,8 @@ import { CURRENCIES, db, getProfile, todayStr, type Profile } from "../db";
 import { INTEREST_TAGS } from "../content/suggestions";
 import { notificationsSupported, requestNotifPermission } from "../logic/notify";
 import { disableDemo, enableDemo } from "../seed";
+import { PUSH_CONFIGURED } from "../config";
+import { subscribeToPush } from "../logic/push";
 
 export default function Settings() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -39,6 +41,11 @@ export default function Settings() {
   async function save() {
     await db.profile.put(profile!);
     setSaved(true);
+    // Синхронизируем настройки напоминаний с сервером — вода и бюджет теперь
+    // приходят настоящим push, даже если приложение закрыто.
+    if (profile!.notifications && PUSH_CONFIGURED) {
+      await subscribeToPush({ water: profile!.waterReminders, money: profile!.moneyReminders });
+    }
   }
 
   async function toggleDemo(on: boolean) {
@@ -60,7 +67,13 @@ export default function Settings() {
     if (on) {
       const granted = await requestNotifPermission();
       patch({ notifications: granted });
-      if (!granted) alert("Браузер не разрешил уведомления. Включите их в настройках сайта и попробуйте снова.");
+      if (!granted) {
+        alert("Браузер не разрешил уведомления. Включите их в настройках сайта и попробуйте снова.");
+        return;
+      }
+      if (PUSH_CONFIGURED) {
+        await subscribeToPush({ water: profile!.waterReminders, money: profile!.moneyReminders });
+      }
     } else {
       patch({ notifications: false });
     }
@@ -188,9 +201,16 @@ export default function Settings() {
           />
         </label>
         <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
-          Работают, только пока приложение открыто (вкладка или установленное приложение запущены).
-          Уведомления при полностью закрытом приложении в бесплатной версии недоступны.
-          Напоминание про бюджет также показывается в самом разделе «Бюджет».
+          {PUSH_CONFIGURED ? (
+            <>
+              Напоминания про воду и бюджет приходят по-настоящему — даже если приложение закрыто.
+              Про перерывы (факт + слово + разминка) — пока только пока приложение открыто, это отдельная
+              история, зависящая от твоего плана на день.
+            </>
+          ) : (
+            <>Работают, только пока приложение открыто. Настоящие push-уведомления ещё не подключены.</>
+          )}
+          {" "}Напоминание про бюджет также показывается в самом разделе «Бюджет».
         </p>
       </div>
 
@@ -248,7 +268,10 @@ export default function Settings() {
       </div>
 
       <p className="muted center" style={{ marginTop: 24 }}>
-        Все данные хранятся только на этом устройстве, в браузере. Ничего не уходит в сеть.
+        Задачи, бюджет и привычки хранятся только на этом устройстве, в браузере — никуда не уходят.
+        {PUSH_CONFIGURED && profile.notifications && (
+          <> Для push-уведомлений на сервер уходит только техническая подписка устройства (без содержимого задач и бюджета).</>
+        )}
       </p>
     </div>
   );

@@ -26,3 +26,33 @@ self.addEventListener("fetch", (e) => {
       .catch(() => caches.match(e.request).then((r) => r || caches.match("./index.html"))),
   );
 });
+
+// Реальные push-уведомления — приходят от Supabase даже когда приложение закрыто.
+self.addEventListener("push", (event) => {
+  let data = { title: "Джарвис", body: "" };
+  try {
+    if (event.data) data = event.data.json();
+  } catch {
+    data = { title: "Джарвис", body: event.data ? event.data.text() : "" };
+  }
+  const options = {
+    body: data.body || "",
+    icon: "./icon.svg",
+    badge: "./icon.svg",
+    tag: data.tag || "jarvis-push",
+  };
+  event.waitUntil(self.registration.showNotification(data.title || "Джарвис", options));
+});
+
+// Клик по уведомлению — фокусируем открытую вкладку или открываем приложение.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("./");
+    }),
+  );
+});
