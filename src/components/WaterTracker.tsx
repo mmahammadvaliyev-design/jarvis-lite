@@ -27,7 +27,7 @@ export function WaterTracker() {
           style={{
             width: `${Math.min(100, (water / WATER_GOAL) * 100)}%`,
             height: "100%",
-            background: reached ? "var(--green)" : "var(--accent)",
+            background: reached ? "var(--green)" : "var(--grad)",
             transition: "width 0.2s",
           }}
         />

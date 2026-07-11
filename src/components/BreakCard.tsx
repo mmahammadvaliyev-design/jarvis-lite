@@ -12,6 +12,7 @@ export function BreakCard({
 }) {
   const [bundle, setBundle] = useState<BreakBundle | null>(null);
   const [praise, setPraise] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
 
   async function load() {
     const today = todayStr();
@@ -29,14 +30,15 @@ export function BreakCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // «Готово»: засчитываем мини-тренировку, хвалим и переходим к следующему.
+  // «Готово»: засчитываем мини-тренировку, хвалим и СВОРАЧИВАЕМ как выполненное —
+  // никакой бесконечной ленты, сделал дело и пошёл дальше.
   async function done() {
     if (bundle?.movement) await bumpWin("exercises");
     setPraise(pickPraise());
     setTimeout(() => {
       setPraise(null);
-      load();
-    }, 1300);
+      setCompleted(true);
+    }, 1200);
   }
 
   if (!bundle) {
@@ -51,7 +53,15 @@ export function BreakCard({
     return (
       <div className="card block-free center" style={{ padding: "26px 15px" }}>
         <div style={{ fontSize: 22, fontWeight: 800 }}>{praise}</div>
-        <div className="muted" style={{ marginTop: 4 }}>Готовим следующий перерыв…</div>
+      </div>
+    );
+  }
+
+  if (completed) {
+    return (
+      <div className="card block-break center" style={{ padding: "16px 15px" }}>
+        <div style={{ fontWeight: 700 }}>✓ Перерыв сделан</div>
+        <div className="muted" style={{ marginTop: 2 }}>Красава — так и качается дисциплина 💪</div>
       </div>
     );
   }

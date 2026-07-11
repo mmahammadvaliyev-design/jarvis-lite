@@ -185,8 +185,8 @@ export default function Stats() {
                     <XAxis dataKey="day" stroke={AXIS} fontSize={12} />
                     <YAxis stroke={AXIS} fontSize={12} allowDecimals={false} />
                     <Tooltip contentStyle={TOOLTIP} formatter={(v: number, n: string) => [v, n === "done" ? "выполнено" : "запланировано"]} />
-                    <Bar dataKey="planned" fill="#d7dce4" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="done" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="planned" fill="#e2e0ef" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="done" fill="#7c3aed" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

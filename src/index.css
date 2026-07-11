@@ -1,23 +1,33 @@
 :root {
-  --bg: #f4f6f9;
+  --bg: #f5f6fb;
   --surface: #ffffff;
-  --surface-2: #eef1f6;
-  --border: #e3e8ef;
-  --text: #15202e;
-  --muted: #6c788c;
-  --accent: #4f46e5;
-  --accent-dim: #4f46e5;
-  --accent-soft: #ecebff;
+  --surface-2: #eef0f7;
+  --border: #e5e6f1;
+  --text: #14162a;
+  --muted: #6b7189;
+  --accent: #6d28d9;
+  --accent-dim: #6d28d9;
+  --accent-soft: #f2ecff;
+  /* энергичный градиент (Pulse) на чистой светлой базе (Aurora) */
+  --grad: linear-gradient(135deg, #5b4bff 0%, #7c3aed 48%, #ec4899 100%);
   --green: #059669;
   --green-soft: #e6f6ef;
   --amber: #d97706;
   --amber-soft: #fdf1e0;
   --red: #dc2626;
   --red-soft: #fdeaea;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 16px rgba(16, 24, 40, 0.06);
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow: 0 1px 2px rgba(20, 22, 42, 0.04), 0 6px 16px rgba(20, 22, 42, 0.06);
+  --shadow-sm: 0 1px 2px rgba(20, 22, 42, 0.05);
   --nav-h: 66px;
   color-scheme: light;
+}
+
+/* градиентный текст для акцентных заголовков */
+.grad-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 * { box-sizing: border-box; }
@@ -71,8 +81,8 @@ button {
 }
 button:hover { filter: brightness(0.97); }
 button:active { transform: translateY(1px); }
-button.primary { background: var(--accent); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28); }
-button.primary:hover { filter: brightness(1.05); }
+button.primary { background: var(--grad); color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32); }
+button.primary:hover { filter: brightness(1.06); }
 button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
 button.small { padding: 7px 12px; font-size: 13px; }
 button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
@@ -163,7 +173,7 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .timeline-time { width: 44px; flex-shrink: 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 15px; }
 .timeline-body { flex: 1; min-width: 0; }
 .block-break { border-style: dashed; }
-.block-free { border-color: var(--accent); box-shadow: 0 2px 10px rgba(79, 70, 229, 0.1); }
+.block-free { border-color: #c9b8f5; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.12); }
 
 .task-done .task-title { text-decoration: line-through; color: var(--muted); }
 
@@ -203,7 +213,7 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 }
 .cal-num { font-size: 14px; font-variant-numeric: tabular-nums; }
 .cal-today { border-color: var(--accent); }
-.cal-sel { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3); }
+.cal-sel { background: var(--grad); color: #fff; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.34); }
 .cal-badge {
   font-size: 9px;
   line-height: 1;
@@ -226,7 +236,7 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .txn-amt.expense { color: var(--red); }
 .seg { display: flex; gap: 6px; }
 .seg button { flex: 1; border: 1px solid var(--border); }
-.seg button.on { background: var(--accent); color: #fff; font-weight: 600; border-color: var(--accent); }
+.seg button.on { background: var(--grad); color: #fff; font-weight: 600; border-color: transparent; }
 
 /* совсем узкие экраны */
 @media (max-width: 360px) {

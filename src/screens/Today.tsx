@@ -102,7 +102,7 @@ export default function Today() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: 2 }}>{greeting} 👋</h1>
+      <h1 style={{ marginBottom: 2 }}><span className="grad-text">{greeting}</span> 👋</h1>
       {subtitle && <div className="muted" style={{ marginBottom: 16 }}>{subtitle}</div>}
 
       <CarryOverBanner tasks={carry ?? []} onAddToToday={addCarryToToday} onDelete={deleteTask} />
