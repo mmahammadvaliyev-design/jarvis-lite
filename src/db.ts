@@ -65,6 +65,7 @@ export interface Profile {
   breakEveryMin: number; // микро-перерыв не реже, чем раз в N минут работы (0 = только по ходу)
   wantMovement: boolean; // включать разминку (отжаться/присесть) в перерывы
   notifications: boolean; // разрешены ли браузерные уведомления о перерывах
+  currency: string; // код валюты для раздела «Деньги» (AZN, RUB, …)
 }
 
 // Построенный план дня, привязанный к дате.
@@ -97,6 +98,20 @@ export const EXPENSE_CATEGORIES = [
 ];
 export const INCOME_CATEGORIES = ["зарплата", "подработка", "подарок", "прочее"];
 
+export const CURRENCIES = [
+  { code: "AZN", symbol: "₼", label: "Манат" },
+  { code: "RUB", symbol: "₽", label: "Рубль" },
+  { code: "USD", symbol: "$", label: "Доллар" },
+  { code: "EUR", symbol: "€", label: "Евро" },
+  { code: "TRY", symbol: "₺", label: "Лира" },
+  { code: "KZT", symbol: "₸", label: "Тенге" },
+  { code: "UAH", symbol: "₴", label: "Гривна" },
+];
+
+export function currencySymbol(code: string): string {
+  return CURRENCIES.find((c) => c.code === code)?.symbol ?? "₼";
+}
+
 export const DEFAULT_PROFILE: Profile = {
   id: "me",
   interests: ["интересные факты", "новые слова", "английский"],
@@ -107,6 +122,7 @@ export const DEFAULT_PROFILE: Profile = {
   breakEveryMin: 60,
   wantMovement: true,
   notifications: false,
+  currency: "AZN",
 };
 
 class JarvisDB extends Dexie {
@@ -151,8 +167,8 @@ export async function getProfile(): Promise<Profile> {
   return DEFAULT_PROFILE;
 }
 
-export function money(n: number): string {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " ₽";
+export function money(n: number, symbol = "₼"): string {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " " + symbol;
 }
 
 export function uid(): string {

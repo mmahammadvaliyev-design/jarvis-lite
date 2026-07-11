@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
+  currencySymbol,
   db,
+  DEFAULT_PROFILE,
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
   money,
@@ -26,6 +28,8 @@ export default function Money() {
     () => db.txns.where("date").between(monthStart, monthEnd, true, true).reverse().sortBy("date"),
     [monthStart, monthEnd],
   );
+  const profile = useLiveQuery(() => db.profile.get("me"), []);
+  const sym = currencySymbol(profile?.currency ?? DEFAULT_PROFILE.currency);
 
   // Форма
   const [type, setType] = useState<TxnType>("expense");
@@ -88,15 +92,15 @@ export default function Money() {
 
       <div className="card center">
         <div className="muted">Баланс за месяц</div>
-        <div className={`balance ${net >= 0 ? "pos" : "neg"}`}>{money(net)}</div>
+        <div className={`balance ${net >= 0 ? "pos" : "neg"}`}>{money(net, sym)}</div>
         <div className="row" style={{ gap: 10, marginTop: 10 }}>
           <div className="grow">
             <div className="muted">Доходы</div>
-            <div style={{ color: "var(--green)", fontWeight: 700 }}>{money(income)}</div>
+            <div style={{ color: "var(--green)", fontWeight: 700 }}>{money(income, sym)}</div>
           </div>
           <div className="grow">
             <div className="muted">Расходы</div>
-            <div style={{ color: "var(--red)", fontWeight: 700 }}>{money(expense)}</div>
+            <div style={{ color: "var(--red)", fontWeight: 700 }}>{money(expense, sym)}</div>
           </div>
         </div>
       </div>
@@ -111,7 +115,7 @@ export default function Money() {
           <input
             type="text"
             inputMode="decimal"
-            placeholder="Сумма, ₽"
+            placeholder={`Сумма, ${sym}`}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="grow"
@@ -139,7 +143,7 @@ export default function Money() {
               <div key={cat} style={{ marginBottom: 8 }}>
                 <div className="row spread" style={{ marginBottom: 3 }}>
                   <span>{cat}</span>
-                  <span className="muted">{money(sum)}</span>
+                  <span className="muted">{money(sum, sym)}</span>
                 </div>
                 <div style={{ height: 8, background: "var(--surface-2)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${(sum / maxCat) * 100}%`, height: "100%", background: "var(--accent)" }} />
@@ -162,7 +166,7 @@ export default function Money() {
               </div>
               <div className="row" style={{ gap: 10 }}>
                 <span className={`txn-amt ${t.type}`} style={{ fontWeight: 700 }}>
-                  {t.type === "income" ? "+" : "−"}{money(t.amount).replace(" ₽", "")}
+                  {t.type === "income" ? "+" : "−"}{money(t.amount, sym)}
                 </span>
                 <button className="ghost small" onClick={() => del(t)} aria-label="Удалить">✕</button>
               </div>

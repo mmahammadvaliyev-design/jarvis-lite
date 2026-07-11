@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { db, getProfile, type Profile } from "../db";
+import { CURRENCIES, db, getProfile, type Profile } from "../db";
 import { INTEREST_TAGS } from "../content/suggestions";
 import { notificationsSupported, requestNotifPermission } from "../logic/notify";
 
@@ -156,6 +156,21 @@ export default function Settings() {
           Работают, только пока приложение открыто (вкладка или установленное приложение запущены).
           Уведомления при полностью закрытом приложении в бесплатной версии недоступны.
         </p>
+      </div>
+
+      <h2>Валюта (раздел «Деньги»)</h2>
+      <div className="card">
+        <div className="row wrap" style={{ gap: 8 }}>
+          {CURRENCIES.map((c) => (
+            <button
+              key={c.code}
+              className={profile.currency === c.code ? "primary small" : "ghost small"}
+              onClick={() => patch({ currency: c.code })}
+            >
+              {c.symbol} {c.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="row" style={{ gap: 8, marginTop: 16 }}>

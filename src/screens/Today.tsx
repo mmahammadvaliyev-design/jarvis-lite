@@ -7,6 +7,7 @@ import { CarryOverBanner } from "../components/CarryOverBanner";
 import { BreakCard } from "../components/BreakCard";
 import { Calendar, type DayCount } from "../components/Calendar";
 import { DayReview } from "../components/DayReview";
+import { DayIdeas } from "../components/DayIdeas";
 import { scheduleBreakNotifications, clearBreakNotifications } from "../logic/notify";
 
 function diffMin(start: string, end: string): number {
@@ -161,6 +162,8 @@ export default function Today() {
           ))}
         </>
       )}
+
+      {selected === today && <DayIdeas tasks={tasks ?? []} profile={profile} />}
 
       {(tasks?.length ?? 0) > 0 && selected <= today && <DayReview date={selected} />}
     </div>

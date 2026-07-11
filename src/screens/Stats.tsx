@@ -25,15 +25,19 @@ function label(dateStr: string): string {
 }
 
 const CAT_COLORS: Record<Category, string> = {
-  работа: "#38bdf8",
-  учёба: "#818cf8",
-  здоровье: "#34d399",
-  быт: "#fbbf24",
-  финансы: "#f472b6",
-  люди: "#fb923c",
-  саморазвитие: "#a78bfa",
-  отдых: "#94a3b8",
+  работа: "#2563eb",
+  учёба: "#4f46e5",
+  здоровье: "#059669",
+  быт: "#d97706",
+  финансы: "#db2777",
+  люди: "#ea580c",
+  саморазвитие: "#7c3aed",
+  отдых: "#64748b",
 };
+
+const AXIS = "#6c788c";
+const GRID = "#e3e8ef";
+const TOOLTIP = { background: "#fff", border: "1px solid #e3e8ef", borderRadius: 8, color: "#15202e" } as const;
 
 export default function Stats() {
   const today = todayStr();
@@ -96,15 +100,15 @@ export default function Stats() {
           <div className="card">
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={byDay} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+                <XAxis dataKey="day" stroke={AXIS} fontSize={12} />
+                <YAxis stroke={AXIS} fontSize={12} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }}
+                  contentStyle={TOOLTIP}
                   formatter={(v: number, n: string) => [v, n === "done" ? "выполнено" : "запланировано"]}
                 />
-                <Bar dataKey="planned" fill="#334155" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="done" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="planned" fill="#d7dce4" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="done" fill="#4f46e5" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -113,10 +117,10 @@ export default function Stats() {
           <div className="card">
             <ResponsiveContainer width="100%" height={Math.max(120, catData.length * 34)}>
               <BarChart data={catData} layout="vertical" margin={{ top: 4, right: 12, left: 40, bottom: 4 }}>
-                <XAxis type="number" stroke="#94a3b8" fontSize={12} allowDecimals={false} />
-                <YAxis type="category" dataKey="category" stroke="#94a3b8" fontSize={12} width={90} />
+                <XAxis type="number" stroke={AXIS} fontSize={12} allowDecimals={false} />
+                <YAxis type="category" dataKey="category" stroke={AXIS} fontSize={12} width={90} />
                 <Tooltip
-                  contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }}
+                  contentStyle={TOOLTIP}
                   formatter={(v: number) => [v, "выполнено"]}
                 />
                 <Bar dataKey="count" radius={[0, 4, 4, 0]}>
@@ -132,14 +136,14 @@ export default function Stats() {
           <div className="card">
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={byDay} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+                <XAxis dataKey="day" stroke={AXIS} fontSize={12} />
+                <YAxis stroke={AXIS} fontSize={12} />
                 <Tooltip
-                  contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }}
+                  contentStyle={TOOLTIP}
                   formatter={(v: number) => [`${v} мин`, "фокус"]}
                 />
-                <Line type="monotone" dataKey="focus" stroke="#34d399" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="focus" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
