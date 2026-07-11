@@ -152,9 +152,19 @@ export default function Settings() {
             style={{ width: 20, height: 20 }}
           />
         </label>
+        <label className="row spread" style={{ margin: "12px 0 0", alignItems: "center", cursor: "pointer" }}>
+          <span>Напоминать про бюджет днём и вечером (записать доходы/расходы)</span>
+          <input
+            type="checkbox"
+            checked={profile.moneyReminders}
+            onChange={(e) => patch({ moneyReminders: e.target.checked })}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
         <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
           Работают, только пока приложение открыто (вкладка или установленное приложение запущены).
           Уведомления при полностью закрытом приложении в бесплатной версии недоступны.
+          Напоминание про бюджет также показывается в самом разделе «Бюджет».
         </p>
       </div>
 

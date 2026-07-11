@@ -65,7 +65,8 @@ export interface Profile {
   breakEveryMin: number; // микро-перерыв не реже, чем раз в N минут работы (0 = только по ходу)
   wantMovement: boolean; // включать разминку (отжаться/присесть) в перерывы
   notifications: boolean; // разрешены ли браузерные уведомления о перерывах
-  currency: string; // код валюты для раздела «Деньги» (AZN, RUB, …)
+  moneyReminders: boolean; // напоминать записывать доходы/расходы днём и вечером
+  currency: string; // код валюты для раздела «Бюджет» (AZN, RUB, …)
 }
 
 // Построенный план дня, привязанный к дате.
@@ -122,6 +123,7 @@ export const DEFAULT_PROFILE: Profile = {
   breakEveryMin: 60,
   wantMovement: true,
   notifications: false,
+  moneyReminders: true,
   currency: "AZN",
 };
 

@@ -31,6 +31,15 @@ export default function Money() {
   const profile = useLiveQuery(() => db.profile.get("me"), []);
   const sym = currencySymbol(profile?.currency ?? DEFAULT_PROFILE.currency);
 
+  // Напоминание записать доходы/расходы (днём и вечером).
+  const [remDismissed, setRemDismissed] = useState(false);
+  const todayTxns = (txns ?? []).filter((t) => t.date === todayStr());
+  const todayIncome = todayTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const todayExpense = todayTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const hour = now.getHours();
+  const remWindow = hour >= 13; // днём и вечером
+  const showReminder = remWindow && !remDismissed;
+
   // Форма
   const [type, setType] = useState<TxnType>("expense");
   const [amount, setAmount] = useState("");
@@ -85,10 +94,24 @@ export default function Money() {
 
   return (
     <div>
-      <h1>Деньги</h1>
+      <h1>Бюджет</h1>
       <div className="muted" style={{ marginTop: -8, marginBottom: 12 }}>
         {MONTHS[ym.month]} {ym.year}
       </div>
+
+      {showReminder && (
+        <div className="card idea">
+          <div className="row spread" style={{ marginBottom: 6 }}>
+            <div style={{ fontWeight: 700 }}>💰 {hour >= 19 ? "Итоги дня по деньгам" : "Не забудь про бюджет"}</div>
+            <button className="ghost small" onClick={() => setRemDismissed(true)} aria-label="Скрыть">✕</button>
+          </div>
+          <div style={{ lineHeight: 1.5 }}>
+            {todayTxns.length === 0
+              ? "Запиши, сколько сегодня заработал и сколько успел потратить — это важно, чтобы бюджет был честным."
+              : `Сегодня записано: доход +${money(todayIncome, sym)}, расход −${money(todayExpense, sym)}. Всё внёс? Допиши, что забыл.`}
+          </div>
+        </div>
+      )}
 
       <div className="card center">
         <div className="muted">Баланс за месяц</div>

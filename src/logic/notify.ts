@@ -1,5 +1,6 @@
 import type { DayPlan } from "./buildDay";
 import { buildBreakBundle } from "../content/suggestions";
+import { currencySymbol, db, getProfile, money, todayStr } from "../db";
 
 // Браузерные уведомления о перерывах. Важное ограничение: срабатывают только
 // пока приложение открыто (вкладка или установленная PWA запущены). Уведомления
@@ -67,5 +68,49 @@ export function scheduleBreakNotifications(plan: DayPlan, wantMovement: boolean)
     const winMin = Math.max(5, toMin(b.end) - startMin);
     const id = window.setTimeout(() => fireBreak(winMin, wantMovement), delayMs);
     timers.push(id);
+  }
+}
+
+// ── Напоминания о бюджете (днём и вечером) ────────────────────────
+let moneyTimers: number[] = [];
+export const MONEY_REMINDER_TIMES = ["14:00", "20:00"];
+
+export function clearMoneyReminders() {
+  moneyTimers.forEach((t) => clearTimeout(t));
+  moneyTimers = [];
+}
+
+async function fireMoneyReminder() {
+  if (!notificationsSupported() || Notification.permission !== "granted") return;
+  const today = todayStr();
+  const txns = await db.txns.where("date").equals(today).toArray();
+  const profile = await getProfile();
+  const sym = currencySymbol(profile.currency);
+  const income = txns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expense = txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const body =
+    txns.length === 0
+      ? "Не забудь записать, сколько сегодня заработал и потратил — это важно для бюджета."
+      : `Сегодня записано: +${money(income, sym)} / −${money(expense, sym)}. Всё внёс? Допиши, что забыл.`;
+  try {
+    new Notification("Джарвис · бюджет", { body, icon: "./icon.svg", tag: "jarvis-money" });
+  } catch {
+    /* Notification может требовать service worker — тихо пропускаем */
+  }
+}
+
+// Планирует напоминания о бюджете на ближайшие моменты (днём и вечером) — пока приложение открыто.
+export function scheduleMoneyReminders() {
+  clearMoneyReminders();
+  if (!notificationsSupported() || Notification.permission !== "granted") return;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  for (const t of MONEY_REMINDER_TIMES) {
+    const at = toMin(t);
+    if (at <= nowMin) continue;
+    const delayMs = (at - nowMin) * 60_000 - now.getSeconds() * 1000;
+    if (delayMs <= 0 || delayMs > 14 * 60 * 60_000) continue;
+    const id = window.setTimeout(fireMoneyReminder, delayMs);
+    moneyTimers.push(id);
   }
 }

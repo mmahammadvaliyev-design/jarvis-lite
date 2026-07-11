@@ -88,9 +88,21 @@ export default function Today() {
       ? "Сегодня"
       : new Date(selected + "T00:00:00").toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 
+  const greetHour = new Date().getHours();
+  const greeting =
+    greetHour < 5 ? "Доброй ночи" : greetHour < 12 ? "Доброе утро" : greetHour < 18 ? "Добрый день" : "Добрый вечер";
+  const pendingToday = (tasks ?? []).filter((t) => t.status === "pending").length;
+  const subtitle =
+    selected === today
+      ? pendingToday > 0
+        ? `На сегодня осталось задач: ${pendingToday}. Чем займёмся?`
+        : "На сегодня всё под контролем."
+      : "";
+
   return (
     <div>
-      <h1>Календарь</h1>
+      <h1 style={{ marginBottom: 2 }}>{greeting} 👋</h1>
+      {subtitle && <div className="muted" style={{ marginBottom: 16 }}>{subtitle}</div>}
 
       <CarryOverBanner tasks={carry ?? []} onAddToToday={addCarryToToday} onDelete={deleteTask} />
 

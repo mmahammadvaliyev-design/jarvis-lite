@@ -119,15 +119,14 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: var(--nav-h);
   max-width: 520px;
   margin: 0 auto;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
   box-shadow: 0 -2px 12px rgba(16, 24, 40, 0.05);
   display: flex;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
 }
 .nav a {
   flex: 1;
@@ -136,15 +135,28 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
   align-items: center;
   justify-content: center;
   gap: 3px;
+  padding: 4px 2px;
   text-decoration: none;
   color: var(--muted);
-  font-size: 10.5px;
   min-width: 0;
 }
 .nav a.active { color: var(--accent); }
-.nav a.active .ico { transform: translateY(-1px); }
-.nav .ico { font-size: 19px; line-height: 1; }
-.nav a span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.nav .ico {
+  font-size: 20px;
+  line-height: 1;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav .lbl {
+  font-size: 11px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 
 /* таймлайн */
 .timeline-block { display: flex; gap: 10px; align-items: stretch; }
