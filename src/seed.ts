@@ -40,4 +40,6 @@ export async function clearAll() {
   await db.tasks.clear();
   await db.plans.clear();
   await db.seen.clear();
+  await db.txns.clear();
+  await db.wins.clear();
 }

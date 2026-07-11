@@ -6,7 +6,12 @@ import Money from "./screens/Money";
 import Stats from "./screens/Stats";
 import Settings from "./screens/Settings";
 import { getProfile } from "./db";
-import { clearMoneyReminders, scheduleMoneyReminders } from "./logic/notify";
+import {
+  clearMoneyReminders,
+  clearWaterReminders,
+  scheduleMoneyReminders,
+  scheduleWaterReminders,
+} from "./logic/notify";
 
 const TABS = [
   { to: "/", ico: "📅", label: "План", end: true },
@@ -21,8 +26,12 @@ export default function App() {
   useEffect(() => {
     getProfile().then((p) => {
       if (p.notifications && p.moneyReminders) scheduleMoneyReminders();
+      if (p.notifications && p.waterReminders) scheduleWaterReminders();
     });
-    return () => clearMoneyReminders();
+    return () => {
+      clearMoneyReminders();
+      clearWaterReminders();
+    };
   }, []);
 
   return (

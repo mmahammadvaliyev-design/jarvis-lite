@@ -66,8 +66,18 @@ export interface Profile {
   wantMovement: boolean; // включать разминку (отжаться/присесть) в перерывы
   notifications: boolean; // разрешены ли браузерные уведомления о перерывах
   moneyReminders: boolean; // напоминать записывать доходы/расходы днём и вечером
+  waterReminders: boolean; // напоминать пить воду несколько раз в день
   currency: string; // код валюты для раздела «Бюджет» (AZN, RUB, …)
 }
+
+// Дневные «победы» — мини-тренировки и стаканы воды (для позитивной статистики).
+export interface Win {
+  date: string; // "YYYY-MM-DD" — первичный ключ
+  water: number;
+  exercises: number;
+}
+
+export const WATER_GOAL = 8;
 
 // Построенный план дня, привязанный к дате.
 export interface PlanRecord extends DayPlan {
@@ -124,6 +134,7 @@ export const DEFAULT_PROFILE: Profile = {
   wantMovement: true,
   notifications: false,
   moneyReminders: true,
+  waterReminders: true,
   currency: "AZN",
 };
 
@@ -133,6 +144,7 @@ class JarvisDB extends Dexie {
   profile!: Table<Profile, string>;
   plans!: Table<PlanRecord, string>;
   txns!: Table<Txn, string>;
+  wins!: Table<Win, string>;
 
   constructor() {
     super("jarvis-lite");
@@ -145,6 +157,10 @@ class JarvisDB extends Dexie {
     // v2: добавили финансы. Существующие таблицы переносятся автоматически.
     this.version(2).stores({
       txns: "id, date, type, category",
+    });
+    // v3: дневные «победы» (вода, мини-тренировки).
+    this.version(3).stores({
+      wins: "date",
     });
   }
 }
@@ -171,6 +187,14 @@ export async function getProfile(): Promise<Profile> {
 
 export function money(n: number, symbol = "₼"): string {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n) + " " + symbol;
+}
+
+// Инкремент дневной «победы» (вода или мини-тренировка).
+export async function bumpWin(field: "water" | "exercises", delta = 1): Promise<void> {
+  const date = todayStr();
+  const w = (await db.wins.get(date)) ?? { date, water: 0, exercises: 0 };
+  w[field] = Math.max(0, w[field] + delta);
+  await db.wins.put(w);
 }
 
 export function uid(): string {

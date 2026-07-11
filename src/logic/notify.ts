@@ -114,3 +114,41 @@ export function scheduleMoneyReminders() {
     moneyTimers.push(id);
   }
 }
+
+// ── Напоминания пить воду (несколько раз в день) ──────────────────
+let waterTimers: number[] = [];
+export const WATER_REMINDER_TIMES = ["10:00", "13:00", "16:00", "19:00"];
+const WATER_LINES = [
+  "Время попить воды 💧 Пара глотков — и голова свежее.",
+  "Глоток воды — маленькая забота о себе 💧 Сделай прямо сейчас.",
+  "Не забывай про воду 💧 Тело скажет спасибо.",
+];
+
+export function clearWaterReminders() {
+  waterTimers.forEach((t) => clearTimeout(t));
+  waterTimers = [];
+}
+
+function fireWater() {
+  if (!notificationsSupported() || Notification.permission !== "granted") return;
+  const body = WATER_LINES[Math.floor(Math.random() * WATER_LINES.length)];
+  try {
+    new Notification("Джарвис · вода", { body, icon: "./icon.svg", tag: "jarvis-water" });
+  } catch {
+    /* тихо пропускаем */
+  }
+}
+
+export function scheduleWaterReminders() {
+  clearWaterReminders();
+  if (!notificationsSupported() || Notification.permission !== "granted") return;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  for (const t of WATER_REMINDER_TIMES) {
+    const at = toMin(t);
+    if (at <= nowMin) continue;
+    const delayMs = (at - nowMin) * 60_000 - now.getSeconds() * 1000;
+    if (delayMs <= 0 || delayMs > 14 * 60 * 60_000) continue;
+    waterTimers.push(window.setTimeout(fireWater, delayMs));
+  }
+}

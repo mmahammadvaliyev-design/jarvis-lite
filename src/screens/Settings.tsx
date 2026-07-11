@@ -161,6 +161,15 @@ export default function Settings() {
             style={{ width: 20, height: 20 }}
           />
         </label>
+        <label className="row spread" style={{ margin: "12px 0 0", alignItems: "center", cursor: "pointer" }}>
+          <span>Напоминать пить воду несколько раз в день 💧</span>
+          <input
+            type="checkbox"
+            checked={profile.waterReminders}
+            onChange={(e) => patch({ waterReminders: e.target.checked })}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
         <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
           Работают, только пока приложение открыто (вкладка или установленное приложение запущены).
           Уведомления при полностью закрытом приложении в бесплатной версии недоступны.

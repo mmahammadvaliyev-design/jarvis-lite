@@ -8,6 +8,7 @@ import { BreakCard } from "../components/BreakCard";
 import { Calendar, type DayCount } from "../components/Calendar";
 import { DayReview } from "../components/DayReview";
 import { DayIdeas } from "../components/DayIdeas";
+import { WaterTracker } from "../components/WaterTracker";
 import { scheduleBreakNotifications, clearBreakNotifications } from "../logic/notify";
 
 function diffMin(start: string, end: string): number {
@@ -117,6 +118,8 @@ export default function Today() {
       />
 
       <h2 style={{ textTransform: "capitalize" }}>{selLabel}</h2>
+
+      {selected === today && <WaterTracker />}
 
       {nothing && (
         <div className="empty">

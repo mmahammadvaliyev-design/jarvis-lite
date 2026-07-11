@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { db, todayStr } from "../db";
-import { buildBreakBundle, type BreakBundle } from "../content/suggestions";
+import { bumpWin, db, todayStr } from "../db";
+import { buildBreakBundle, pickPraise, type BreakBundle } from "../content/suggestions";
 
-// Один перерыв «пачкой»: пора передохнуть + факт + слово на английском + разминка.
+// Один перерыв «пачкой»: пора передохнуть + факт + слово на английском + лёгкая разминка.
 export function BreakCard({
   windowMinutes,
   wantMovement,
@@ -11,13 +11,13 @@ export function BreakCard({
   wantMovement: boolean;
 }) {
   const [bundle, setBundle] = useState<BreakBundle | null>(null);
+  const [praise, setPraise] = useState<string | null>(null);
 
   async function load() {
     const today = todayStr();
     const seenRows = await db.seen.where("date").equals(today).toArray();
     const seenIds = seenRows.map((r) => r.suggestionId);
     const b = buildBreakBundle(seenIds, wantMovement);
-    // Помечаем показанное, чтобы «Другой перерыв» не повторял то же самое.
     for (const s of [b.fact, b.word]) {
       if (s) await db.seen.put({ id: `${s.id}@${today}`, suggestionId: s.id, date: today });
     }
@@ -29,10 +29,29 @@ export function BreakCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // «Готово»: засчитываем мини-тренировку, хвалим и переходим к следующему.
+  async function done() {
+    if (bundle?.movement) await bumpWin("exercises");
+    setPraise(pickPraise());
+    setTimeout(() => {
+      setPraise(null);
+      load();
+    }, 1300);
+  }
+
   if (!bundle) {
     return (
       <div className="card block-free">
         <div className="muted">☕ Перерыв ~{windowMinutes} мин</div>
+      </div>
+    );
+  }
+
+  if (praise) {
+    return (
+      <div className="card block-free center" style={{ padding: "26px 15px" }}>
+        <div style={{ fontSize: 22, fontWeight: 800 }}>{praise}</div>
+        <div className="muted" style={{ marginTop: 4 }}>Готовим следующий перерыв…</div>
       </div>
     );
   }
@@ -59,15 +78,14 @@ export function BreakCard({
 
       {bundle.movement && (
         <div style={{ marginBottom: 4 }}>
-          <div className="muted" style={{ marginBottom: 2 }}>🏃 Разминка</div>
+          <div className="muted" style={{ marginBottom: 2 }}>🏃 Лёгкая разминка</div>
           <div style={{ fontWeight: 600 }}>{bundle.movement}</div>
         </div>
       )}
 
-      <div className="row" style={{ gap: 8, marginTop: 10 }}>
-        <button className="small" onClick={load}>
-          Другой перерыв
-        </button>
+      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+        <button className="primary small grow" onClick={done}>Готово ✓</button>
+        <button className="ghost small" onClick={load}>Другое</button>
       </div>
     </div>
   );
