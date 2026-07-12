@@ -18,7 +18,6 @@
   --red-soft: #fdeaea;
   --shadow: 0 1px 2px rgba(20, 22, 42, 0.04), 0 6px 16px rgba(20, 22, 42, 0.06);
   --shadow-sm: 0 1px 2px rgba(20, 22, 42, 0.05);
-  --nav-h: 66px;
   color-scheme: light;
 }
 
@@ -32,29 +31,36 @@
 
 * { box-sizing: border-box; }
 
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
+/* Каркас на всю высоту окна, сам не скроллится — скроллится только .screen внутри.
+   Так нижняя панель — обычный элемент flex-колонки, а не position:fixed, и не может
+   «ехать» вместе с контентом на iOS во время инерционного скролла. */
 .app {
   max-width: 520px;
   width: 100%;
   margin: 0 auto;
-  min-height: 100%;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow: hidden;
 }
 
 .screen {
   flex: 1;
-  padding: 18px 16px calc(var(--nav-h) + 28px);
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 16px 24px;
 }
 
 h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 16px; }
@@ -125,12 +131,10 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .pill.medium { background: var(--amber-soft); color: var(--amber); }
 .pill.low { background: var(--surface-2); color: var(--muted); }
 
-/* нижняя навигация */
+/* нижняя навигация — обычный (не fixed) элемент внизу flex-колонки .app,
+   поэтому не может «уехать» вместе со скроллом. */
 .nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  max-width: 520px;
-  margin: 0 auto;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
