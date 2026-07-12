@@ -1,7 +1,6 @@
 // Публичные значения — безопасно хранить в коде, это не секреты.
-// URL и anon key заполняются после того, как проект Supabase будет создан.
-export const SUPABASE_FUNCTIONS_URL = ""; // напр. "https://xxxxx.functions.supabase.co"
-export const SUPABASE_ANON_KEY = ""; // "anon public" ключ из Project Settings → API
+export const SUPABASE_FUNCTIONS_URL = "https://hpvteflbxvtdgsjanboj.supabase.co/functions/v1";
+export const SUPABASE_ANON_KEY = "sb_publishable_Cv_jHywSGaf0WLxzvSwybg__dZHLIIb";
 
 // Публичный VAPID-ключ для Web Push (приватный лежит только в секретах Supabase).
 export const VAPID_PUBLIC_KEY =
