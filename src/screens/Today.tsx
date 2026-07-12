@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Link } from "react-router-dom";
-import { db, DEFAULT_PROFILE, todayStr, type Task } from "../db";
+import { db, DEFAULT_PROFILE, nowHHMM, todayStr, type Task } from "../db";
+import { buildDay } from "../logic/buildDay";
 import { TaskCard } from "../components/TaskCard";
 import { CarryOverBanner } from "../components/CarryOverBanner";
 import { BreakCard } from "../components/BreakCard";
@@ -65,6 +66,41 @@ export default function Today() {
     }
     return () => clearBreakNotifications();
   }, [profile.notifications, profile.wantMovement, selected, today, plan]);
+
+  // Автоматически строим расписание на сегодня, если его ещё нет — иначе на новый
+  // день пропадают перерывы (а с ними факты/слова), пока не зайти в «Добавить» снова.
+  // Не перестраиваем, если план уже есть — чтобы не сбрасывать уже показанные карточки.
+  useEffect(() => {
+    if (selected !== today) return;
+    if (!rawProfile) return; // профиль ещё не загрузился — подождём точных настроек
+    if (!tasks || tasks.length === 0) return; // строить не из чего
+    if (plan && plan.blocks.length > 0) return; // план уже есть
+
+    (async () => {
+      const built = buildDay(tasks, {
+        wakeTime: profile.wakeTime,
+        sleepTime: profile.sleepTime,
+        workStart: profile.workStart,
+        workEnd: profile.workEnd,
+        now: nowHHMM(),
+        wantMovement: profile.wantMovement,
+        breakEveryMin: profile.breakEveryMin,
+      });
+      await db.plans.put({ date: today, ...built });
+    })();
+  }, [
+    selected,
+    today,
+    tasks,
+    plan,
+    rawProfile,
+    profile.wakeTime,
+    profile.sleepTime,
+    profile.workStart,
+    profile.workEnd,
+    profile.wantMovement,
+    profile.breakEveryMin,
+  ]);
 
   async function toggle(t: Task) {
     const done = t.status === "done";
