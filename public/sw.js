@@ -40,13 +40,29 @@ self.addEventListener("push", (event) => {
     icon: "./icon.svg",
     badge: "./icon.svg",
     tag: data.tag || "jarvis-push",
+    actions: data.actions || [],
+    data: data.data || null,
   };
   event.waitUntil(self.registration.showNotification(data.title || "Джарвис", options));
 });
 
-// Клик по уведомлению — фокусируем открытую вкладку или открываем приложение.
+// Клик по уведомлению. Кнопка «+30 мин» на напоминании о еде откладывает его,
+// не открывая приложение. Обычный клик — фокусируем вкладку или открываем её.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const info = event.notification.data;
+
+  if (event.action === "snooze30" && info?.kind === "meal") {
+    event.waitUntil(
+      fetch(`${info.functionsUrl}/snooze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${info.anonKey}` },
+        body: JSON.stringify({ deviceId: info.deviceId, meal: info.meal, minutes: 30 }),
+      }).catch(() => {}),
+    );
+    return;
+  }
+
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {

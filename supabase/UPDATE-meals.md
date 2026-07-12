@@ -1,3 +1,135 @@
+# Обновление: напоминания о еде
+
+Это добавка к тому, что уже настроено — проект, таблица, функции и расписание трогать не нужно,
+просто три маленьких шага. Новые ключи/секреты не нужны, значения тебе присылать не нужно —
+всё уже подключено в коде.
+
+## Шаг 1 — новая колонка в таблице
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Вставь и нажми **Run**:
+
+```sql
+alter table push_subscriptions
+  add column if not exists wake_time text not null default '07:30',
+  add column if not exists morning_reminders boolean not null default true,
+  add column if not exists morning_sent_date text,
+  add column if not exists morning_snooze_until timestamptz,
+  add column if not exists lunch_time text not null default '13:00',
+  add column if not exists lunch_reminders boolean not null default true,
+  add column if not exists lunch_sent_date text,
+  add column if not exists lunch_snooze_until timestamptz,
+  add column if not exists dinner_time text not null default '19:00',
+  add column if not exists dinner_reminders boolean not null default true,
+  add column if not exists dinner_sent_date text,
+  add column if not exists dinner_snooze_until timestamptz;
+```
+
+Ожидай: «Success. No rows returned».
+
+## Шаг 2 — обновить функцию `subscribe`
+
+1. **Edge Functions** → открой существующую функцию **subscribe**.
+2. Найди кнопку редактирования кода (обычно «Edit function» / иконка карандаша).
+3. Удали весь код, вставь новый:
+
+```ts
+// Принимает push-подписку от устройства и сохраняет/обновляет её в базе.
+// Клиент вызывает это с anon-ключом (только для авторизации вызова функции);
+// сама запись в таблицу идёт через service_role — RLS не даёт анониму писать напрямую.
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method not allowed" }), {
+      status: 405,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  let body: {
+    deviceId?: string;
+    subscription?: { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+    timezone?: string;
+    prefs?: {
+      water?: boolean;
+      money?: boolean;
+      wakeTime?: string;
+      morning?: boolean;
+      lunchTime?: string;
+      lunch?: boolean;
+      dinnerTime?: string;
+      dinner?: boolean;
+    };
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "invalid json" }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  const { deviceId, subscription, timezone, prefs } = body;
+  if (!deviceId || !subscription?.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
+    return new Response(JSON.stringify({ error: "missing deviceId or subscription" }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    {
+      device_id: deviceId,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      timezone: timezone || "UTC",
+      water_reminders: prefs?.water ?? true,
+      money_reminders: prefs?.money ?? true,
+      wake_time: prefs?.wakeTime || "07:30",
+      morning_reminders: prefs?.morning ?? true,
+      lunch_time: prefs?.lunchTime || "13:00",
+      lunch_reminders: prefs?.lunch ?? true,
+      dinner_time: prefs?.dinnerTime || "19:00",
+      dinner_reminders: prefs?.dinner ?? true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "device_id" },
+  );
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { ...CORS_HEADERS, "content-type": "application/json" },
+  });
+});
+```
+
+4. **Deploy**.
+
+## Шаг 3 — обновить функцию `send-reminders`
+
+1. **Edge Functions** → открой существующую **send-reminders**.
+2. Удали весь код, вставь новый:
+
+```ts
 // Вызывается по расписанию (см. supabase/cron.sql) — раз в 15 минут.
 // Проверяет локальное время каждого устройства и рассылает push: вода, бюджет,
 // доброе утро/завтрак, обед, ужин. Битые/просроченные подписки удаляет сами.
@@ -13,13 +145,8 @@ const WATER_LINES = [
   "Не забывай про воду 💧 Тело скажет спасибо.",
 ];
 
-// Публичный anon-ключ проекта — безопасно хранить в коде (та же логика, что и в
-// собранном клиентском JS). Нужен, чтобы service worker мог вызвать /snooze с кнопки
-// прямо из уведомления.
 const PUBLIC_ANON_KEY = "sb_publishable_Cv_jHywSGaf0WLxzvSwybg__dZHLIIb";
 
-// Короткие факты/головоломки для чтения во время еды — отдельный набор от того,
-// что в клиентском приложении (edge-функция не может импортировать код клиента).
 const MEAL_CONTENT = [
   "💡 Осьминоги видят цвета кожей, хотя сами частично дальтоники.",
   "💡 Мёд не портится тысячи лет — археологи находили съедобный мёд в гробницах фараонов.",
@@ -54,7 +181,7 @@ function localHHMM(timezone: string): string {
 function localDateStr(timezone: string): string {
   try {
     const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
-    return fmt.format(new Date()); // en-CA даёт YYYY-MM-DD
+    return fmt.format(new Date());
   } catch {
     return new Date().toISOString().slice(0, 10);
   }
@@ -65,8 +192,6 @@ function toMin(hhmm: string): number {
   return h * 60 + m;
 }
 
-// Окно в 15 минут (совпадает с частотой запуска cron) — ловит любое время,
-// которое выбрал пользователь, а не только кратное 15 минутам.
 function inWindow(targetHHMM: string, nowHHMM: string): boolean {
   const target = toMin(targetHHMM);
   const now = toMin(nowHHMM);
@@ -104,12 +229,10 @@ interface Sub {
 type Meal = "morning" | "lunch" | "dinner";
 
 function shouldFireMeal(targetHHMM: string, sentDate: string | null, snoozeUntil: string | null, nowHHMM: string, today: string): boolean {
-  if (sentDate === today) return false; // уже слали сегодня
+  if (sentDate === today) return false;
   const nowIso = new Date().toISOString();
   if (snoozeUntil) {
-    // отложено, но время ещё не подошло — молчим
     if (snoozeUntil > nowIso) return false;
-    // время отсрочки прошло — шлём сейчас, не дожидаясь окна
     return true;
   }
   return inWindow(targetHHMM, nowHHMM);
@@ -179,7 +302,6 @@ Deno.serve(async (_req) => {
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) {
-          // подписка больше не действительна (отписался/удалил приложение) — чистим
           await supabase.from("push_subscriptions").delete().eq("device_id", sub.device_id);
         }
         results.push({ device: sub.device_id, error: String(e) });
@@ -192,3 +314,83 @@ Deno.serve(async (_req) => {
     headers: { "content-type": "application/json" },
   });
 });
+```
+
+3. **Deploy**.
+
+## Шаг 4 — новая функция `snooze`
+
+1. **Edge Functions** → **Create a new function**.
+2. Имя — строго: `snooze`
+3. Вставь код:
+
+```ts
+// Откладывает конкретное напоминание о еде на N минут. Вызывается либо кликом
+// по кнопке в самом push-уведомлении (через service worker), либо из приложения.
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const VALID_MEALS = ["morning", "lunch", "dinner"] as const;
+type Meal = (typeof VALID_MEALS)[number];
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method not allowed" }), {
+      status: 405,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  let body: { deviceId?: string; meal?: string; minutes?: number };
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "invalid json" }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  const { deviceId, meal } = body;
+  const minutes = Math.min(180, Math.max(5, body.minutes ?? 30));
+
+  if (!deviceId || !meal || !VALID_MEALS.includes(meal as Meal)) {
+    return new Response(JSON.stringify({ error: "invalid deviceId or meal" }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const until = new Date(Date.now() + minutes * 60_000).toISOString();
+
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .update({ [`${meal}_snooze_until`]: until })
+    .eq("device_id", deviceId);
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "content-type": "application/json" },
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: true, until }), {
+    status: 200,
+    headers: { ...CORS_HEADERS, "content-type": "application/json" },
+  });
+});
+```
+
+4. **Deploy**.
+
+## Готово
+
+Никаких новых секретов, никаких новых значений присылать не нужно. После этих 4 шагов напиши «готово» — я проверю со своей стороны, что всё отвечает как надо, и задеплою обновлённое приложение (там появятся настройки времени завтрака/обеда/ужина).

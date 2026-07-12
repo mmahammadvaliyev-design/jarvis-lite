@@ -22,7 +22,16 @@ Deno.serve(async (req) => {
     deviceId?: string;
     subscription?: { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
     timezone?: string;
-    prefs?: { water?: boolean; money?: boolean };
+    prefs?: {
+      water?: boolean;
+      money?: boolean;
+      wakeTime?: string;
+      morning?: boolean;
+      lunchTime?: string;
+      lunch?: boolean;
+      dinnerTime?: string;
+      dinner?: boolean;
+    };
   };
   try {
     body = await req.json();
@@ -52,6 +61,12 @@ Deno.serve(async (req) => {
       timezone: timezone || "UTC",
       water_reminders: prefs?.water ?? true,
       money_reminders: prefs?.money ?? true,
+      wake_time: prefs?.wakeTime || "07:30",
+      morning_reminders: prefs?.morning ?? true,
+      lunch_time: prefs?.lunchTime || "13:00",
+      lunch_reminders: prefs?.lunch ?? true,
+      dinner_time: prefs?.dinnerTime || "19:00",
+      dinner_reminders: prefs?.dinner ?? true,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "device_id" },

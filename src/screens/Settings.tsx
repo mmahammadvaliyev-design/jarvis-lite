@@ -4,7 +4,7 @@ import { INTEREST_TAGS } from "../content/suggestions";
 import { notificationsSupported, requestNotifPermission } from "../logic/notify";
 import { disableDemo, enableDemo } from "../seed";
 import { PUSH_CONFIGURED } from "../config";
-import { subscribeToPush } from "../logic/push";
+import { prefsFromProfile, subscribeToPush } from "../logic/push";
 
 export default function Settings() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -44,7 +44,7 @@ export default function Settings() {
     // Синхронизируем настройки напоминаний с сервером — вода и бюджет теперь
     // приходят настоящим push, даже если приложение закрыто.
     if (profile!.notifications && PUSH_CONFIGURED) {
-      await subscribeToPush({ water: profile!.waterReminders, money: profile!.moneyReminders });
+      await subscribeToPush(prefsFromProfile(profile!));
     }
   }
 
@@ -72,7 +72,7 @@ export default function Settings() {
         return;
       }
       if (PUSH_CONFIGURED) {
-        await subscribeToPush({ water: profile!.waterReminders, money: profile!.moneyReminders });
+        await subscribeToPush(prefsFromProfile(profile!));
       }
     } else {
       patch({ notifications: false });
@@ -203,7 +203,7 @@ export default function Settings() {
         <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
           {PUSH_CONFIGURED ? (
             <>
-              Напоминания про воду и бюджет приходят по-настоящему — даже если приложение закрыто.
+              Напоминания про воду, бюджет и еду (ниже) приходят по-настоящему — даже если приложение закрыто.
               Про перерывы (факт + слово + разминка) — пока только пока приложение открыто, это отдельная
               история, зависящая от твоего плана на день.
             </>
@@ -211,6 +211,50 @@ export default function Settings() {
             <>Работают, только пока приложение открыто. Настоящие push-уведомления ещё не подключены.</>
           )}
           {" "}Напоминание про бюджет также показывается в самом разделе «Бюджет».
+        </p>
+      </div>
+
+      <h2>Напоминания о еде</h2>
+      <div className="card">
+        <label className="row spread" style={{ margin: 0, alignItems: "center", cursor: "pointer" }}>
+          <span>Доброе утро + иди завтракать ☀️ (в час подъёма — {profile.wakeTime})</span>
+          <input
+            type="checkbox"
+            checked={profile.morningReminders}
+            onChange={(e) => patch({ morningReminders: e.target.checked })}
+            style={{ width: 20, height: 20 }}
+          />
+        </label>
+
+        <div className="row spread" style={{ marginTop: 14, alignItems: "center" }}>
+          <label style={{ margin: 0 }}>
+            Обед
+            <input type="time" value={profile.lunchTime} onChange={(e) => patch({ lunchTime: e.target.value })} style={{ width: 110 }} />
+          </label>
+          <input
+            type="checkbox"
+            checked={profile.lunchReminders}
+            onChange={(e) => patch({ lunchReminders: e.target.checked })}
+            style={{ width: 20, height: 20 }}
+          />
+        </div>
+
+        <div className="row spread" style={{ marginTop: 10, alignItems: "center" }}>
+          <label style={{ margin: 0 }}>
+            Ужин
+            <input type="time" value={profile.dinnerTime} onChange={(e) => patch({ dinnerTime: e.target.value })} style={{ width: 110 }} />
+          </label>
+          <input
+            type="checkbox"
+            checked={profile.dinnerReminders}
+            onChange={(e) => patch({ dinnerReminders: e.target.checked })}
+            style={{ width: 20, height: 20 }}
+          />
+        </div>
+
+        <p className="muted" style={{ marginTop: 10, marginBottom: 0 }}>
+          В напоминании об обеде и ужине заодно будет интересный факт или головоломка — есть что почитать/обдумать,
+          пока ешь. Прямо в уведомлении можно нажать «+30 мин», если ещё не готов.
         </p>
       </div>
 

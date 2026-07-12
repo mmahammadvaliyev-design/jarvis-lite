@@ -7,7 +7,7 @@ import Stats from "./screens/Stats";
 import Settings from "./screens/Settings";
 import { getProfile } from "./db";
 import { PUSH_CONFIGURED } from "./config";
-import { subscribeToPush } from "./logic/push";
+import { prefsFromProfile, subscribeToPush } from "./logic/push";
 import {
   clearMoneyReminders,
   clearWaterReminders,
@@ -30,7 +30,7 @@ export default function App() {
       if (PUSH_CONFIGURED) {
         // Бэкенд настроен — вода и бюджет идут настоящим push, локальные таймеры не нужны
         // (иначе уведомление придёт дважды, пока приложение открыто). Заодно освежаем подписку.
-        subscribeToPush({ water: p.waterReminders, money: p.moneyReminders });
+        subscribeToPush(prefsFromProfile(p));
       } else {
         // Бэкенд ещё не подключён — локальный фолбэк, работает только пока открыто.
         if (p.moneyReminders) scheduleMoneyReminders();

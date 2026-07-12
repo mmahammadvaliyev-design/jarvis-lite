@@ -67,6 +67,11 @@ export interface Profile {
   notifications: boolean; // разрешены ли браузерные уведомления о перерывах
   moneyReminders: boolean; // напоминать записывать доходы/расходы днём и вечером
   waterReminders: boolean; // напоминать пить воду несколько раз в день
+  morningReminders: boolean; // «доброе утро + иди завтракать» в час подъёма (wakeTime)
+  lunchTime: string; // "HH:MM" — во сколько напоминать про обед
+  lunchReminders: boolean;
+  dinnerTime: string; // "HH:MM" — во сколько напоминать про ужин
+  dinnerReminders: boolean;
   currency: string; // код валюты для раздела «Бюджет» (AZN, RUB, …)
   demoMode: boolean; // включён ли демо-режим (реальные данные при этом сохранены)
   quitSmoking: boolean; // режим «бросаю курить»
@@ -156,6 +161,11 @@ export const DEFAULT_PROFILE: Profile = {
   notifications: false,
   moneyReminders: true,
   waterReminders: true,
+  morningReminders: true,
+  lunchTime: "13:00",
+  lunchReminders: true,
+  dinnerTime: "19:00",
+  dinnerReminders: true,
   currency: "AZN",
   demoMode: false,
   quitSmoking: false,

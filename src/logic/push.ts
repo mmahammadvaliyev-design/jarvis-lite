@@ -1,8 +1,28 @@
 import { PUSH_CONFIGURED, SUPABASE_ANON_KEY, SUPABASE_FUNCTIONS_URL, VAPID_PUBLIC_KEY } from "../config";
+import type { Profile } from "../db";
 
 export interface PushPrefs {
   water: boolean;
   money: boolean;
+  wakeTime: string; // "HH:MM" — время «доброе утро + иди завтракать»
+  morning: boolean;
+  lunchTime: string;
+  lunch: boolean;
+  dinnerTime: string;
+  dinner: boolean;
+}
+
+export function prefsFromProfile(p: Profile): PushPrefs {
+  return {
+    water: p.waterReminders,
+    money: p.moneyReminders,
+    wakeTime: p.wakeTime,
+    morning: p.morningReminders,
+    lunchTime: p.lunchTime,
+    lunch: p.lunchReminders,
+    dinnerTime: p.dinnerTime,
+    dinner: p.dinnerReminders,
+  };
 }
 
 function urlBase64ToUint8Array(base64: string): BufferSource {
@@ -44,6 +64,22 @@ export async function subscribeToPush(prefs: PushPrefs): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
       body: JSON.stringify({ deviceId: getDeviceId(), subscription: sub.toJSON(), timezone, prefs }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Отложить конкретное напоминание о еде на N минут (вызывается из клика по уведомлению
+// через service worker, но можно дёрнуть и из самого приложения).
+export async function snoozeMeal(meal: "morning" | "lunch" | "dinner", minutes = 30): Promise<boolean> {
+  if (!PUSH_CONFIGURED) return false;
+  try {
+    const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/snooze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ deviceId: getDeviceId(), meal, minutes }),
     });
     return res.ok;
   } catch {
